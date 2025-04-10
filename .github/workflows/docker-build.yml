@@ -40,13 +40,18 @@ jobs:
 
       - name: Docker Scout Scan
         uses: docker/scout-action@v1
-        with:
+        with: 
+          command: scan
           image: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.run_number }}
           dockerhub-user: ${{ secrets.DOCKERHUB_USERNAME }}
-          dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
+          dockerhub-password: ${{ secrets.DOCKERHUB_TOKEN }}  # Corrected
           only-severities: critical,high
           summary: true
-          exit-code: 0  # Set to 1 to fail the job on critical/high CVEs
+          exit-code: 0  # 0 means pass, 1 will cause failure if critical/high vulnerabilities are found
+          format: json  # Output in JSON format
+          github-token: ${{ secrets.GITHUB_TOKEN }}  # Use the default GitHub token
+          write-comment: true  # Optionally write a comment on PRs or commits
+          
 
       - name: Notify Config Repo with New Image
         uses: peter-evans/repository-dispatch@v3
