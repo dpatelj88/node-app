@@ -1,5 +1,4 @@
 # Use Node.js base image
-
 FROM node:16
 
 # Set the working directory
