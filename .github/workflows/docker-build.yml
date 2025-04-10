@@ -1,0 +1,60 @@
+name: CI - Build and Push Docker Image
+
+on:
+  workflow_dispatch:
+
+env:
+  IMAGE_NAME: node-app-dev
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.run_number }}
+
+      - name: Set Docker Hub Description
+        run: |
+          TOKEN=$(curl -s -H "Content-Type: application/json" -X POST \
+            -d '{"username": "${{ secrets.DOCKERHUB_USERNAME }}", "password": "${{ secrets.DOCKERHUB_TOKEN }}"}' \
+            https://hub.docker.com/v2/users/login/ | jq -r .token)
+
+          curl -X PATCH https://hub.docker.com/v2/repositories/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}/ \
+            -H "Content-Type: application/json" \
+            -H "Authorization: JWT ${TOKEN}" \
+            -d '{"full_description": "🚀 Auto-built from GitHub CI. This image contains the Node.js app with latest security updates."}'
+
+      - name: Docker Scout Scan
+        uses: docker/scout-action@v1
+        with:
+          image: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.run_number }}
+          dockerhub-user: ${{ secrets.DOCKERHUB_USERNAME }}
+          dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
+          only-severities: critical,high
+          summary: true
+          exit-code: 0  # Set to 1 to fail the job on critical/high CVEs
+
+      - name: Notify Config Repo with New Image
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.PAT }}
+          repository: ${{ github.actor }}/argocd-node-app-config
+          event-type: new-image
+          client-payload: |
+            {
+              "image": "${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.run_number }}"
+            }
