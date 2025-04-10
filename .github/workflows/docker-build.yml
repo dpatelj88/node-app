@@ -41,7 +41,7 @@ jobs:
       - name: Docker Scout Scan
         uses: docker/scout-action@v1
         with: 
-          command: "scan"
+          command: "cves"  # <-- corrected from "scan"
           image: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.run_number }}
           dockerhub-user: ${{ secrets.DOCKERHUB_USERNAME }}
           dockerhub-password: ${{ secrets.DOCKERHUB_TOKEN }}  # Corrected
